@@ -1,16 +1,31 @@
 package com.example.course_paper;
 
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 
 // Класс Поле -
 public class Field extends Button {
-    // Переменная type хранит значение Типа Поля - {0 - пустое; 1 - рис; 2 - дом; 3 - вода}
+    // Переменная type хранит значение Типа Поля - {0 - пустое; 1 - рис; 2 - вода; 3 - дом}
     final private int type;
     private int required_villagers_amount;
+    private int x_pos, y_pos;
+    private boolean is_occupied = false;
+    public Player belongs_to; //
+    private int x_i, y_j;
 
-    public Field(int type_value){   // Присваивает Полю значение
+    public Field(int type_value, int i, int j, int x, int y){   // Присваивает Полю значение
         super();
         this.type = type_value;
+        // Присвоение текстуры
+        this.setTexture();
+        // Присвоение порядковых номеров i и j нахождения в двумерном массиве
+        this.setRelativePos(i, j);
+        // Присвоение координат x и y полю grid[i][j] для правильного отображения
+        this.setGraphicsPos(x, y);
+
+        // Присвоение координат x и y кнопке grid[i][j] для правильного отображения (для JavaFX)
+        this.setLayoutX(x_pos);
+        this.setLayoutY(y_pos);
     }
 
     public int getType(){   // Возвращает значение типа поля
@@ -21,7 +36,44 @@ public class Field extends Button {
     public void setRequired_villagers_amount(int required_villagers_amount_value){
         this.required_villagers_amount = required_villagers_amount_value;
     }
+
     public int getRequired_villagers_amount(){   // Возвращает количество требуемых крестьян для захвата
         return this.required_villagers_amount;
+    }
+
+    public void setGraphicsPos(int x, int y){    // Присваивает полю координаты x и y (координаты по пикселям)
+        this.x_pos = x;
+        this.y_pos = y;
+    }
+    public int getX(){   // Возвращает x координату поля
+        return this.x_pos;
+    }
+    public int getY(){   // Возвращает y координату поля
+        return this.y_pos;
+    }
+
+    public void conquer(Player player){
+        this.is_occupied = true;
+        this.belongs_to = player;
+        player.give_field(this.x_i, this.y_j);
+        this.setText("");
+    }
+
+    public boolean isUnoccupied(){
+        return !this.is_occupied;
+    }
+
+    public void setRelativePos(int i, int j){
+        this.x_i = i;
+        this.y_j = j;
+    }
+    public int getXI(){
+        return this.x_i;
+    }
+    public int getYJ(){
+        return this.y_j;
+    }
+
+    public void setTexture(){
     }
 }

@@ -64,7 +64,7 @@
                 </transformer>
               </transformers>
               <createDependencyReducedPom>false</createDependencyReducedPom>
-              <mainClass>com.example.course_paper/com.example.course_paper.HelloApplication</mainClass>
+              <mainClass>com.example.course_paper/com.example.course_paper.ConquerGame</mainClass>
               <launcher>app</launcher>
               <jlinkZipName>app</jlinkZipName>
               <jlinkImageName>app</jlinkImageName>
