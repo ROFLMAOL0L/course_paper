@@ -4,8 +4,6 @@ import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 
 /* В данном файле описан класс для запуска приложения с помощью JavaFX, а так же: методы для анимации
@@ -26,6 +24,7 @@ public class ConquerGame extends Application {
     // Размеры окна программы
     private final int stage_height = 750;
     private final int stage_width = 750;
+    private final int user_menu_width = 150;   // Ширина пользовательского меню
 
     // Количество полей (данная константа будет далее использоваться много раз, поэтому целесообразно её объявление)
     private final int cell_amount = stage_height * stage_width / cell_height / cell_width;
@@ -36,9 +35,10 @@ public class ConquerGame extends Application {
     public static Player player = new Player();
     public static Player AIplayer = new Player();
 
-    public Button rice_amount_indicator = new Button();
-    public Button water_amount_indicator = new Button();
-    public Button villagers_amount_indicator = new Button();
+    public static Button rice_amount_indicator = new Button();
+    public static Button water_amount_indicator = new Button();
+    public static Button villagers_amount_indicator = new Button();
+    public static Button game_message_indicator = new Button();
     final private World world = new World(rows_amount, columns_amount);
     static public Group group = new Group();
 
@@ -55,6 +55,10 @@ public class ConquerGame extends Application {
         villagers_amount_indicator.setLayoutX(stage_width);
         villagers_amount_indicator.setLayoutY(300);
         villagers_amount_indicator.setText("Крестьяне: " + player.villagers_amount);
+        game_message_indicator.setLayoutX(stage_width);
+        game_message_indicator.setLayoutY(400);
+        game_message_indicator.setText("Ваш ход!");
+        game_message_indicator.setPrefSize(this.user_menu_width, 100);
     }
 
     @Override
@@ -72,9 +76,10 @@ public class ConquerGame extends Application {
         group.getChildren().add(rice_amount_indicator);
         group.getChildren().add(water_amount_indicator);
         group.getChildren().add(villagers_amount_indicator);
+        group.getChildren().add(game_message_indicator);
 
         // Создаем окно интерфейса
-        Scene scene = new Scene(group, this.stage_width + 100, this.stage_height);
+        Scene scene = new Scene(group, this.stage_width + this.user_menu_width, this.stage_height);
 
         // Меняем надпись окна
         stage.setTitle("Conquer Game");

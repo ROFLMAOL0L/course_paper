@@ -1,7 +1,6 @@
 package com.example.course_paper;
 
 import javafx.scene.control.Button;
-import javafx.scene.control.ContentDisplay;
 
 // Класс Поле -
 public class Field extends Button {
@@ -10,7 +9,7 @@ public class Field extends Button {
     private int required_villagers_amount;
     private int x_pos, y_pos;
     private boolean is_occupied = false;
-    public Player belongs_to; //
+    public Player owner = null; //
     private int x_i, y_j;
 
     public Field(int type_value, int i, int j, int x, int y){   // Присваивает Полю значение
@@ -22,6 +21,7 @@ public class Field extends Button {
         this.setRelativePos(i, j);
         // Присвоение координат x и y полю grid[i][j] для правильного отображения
         this.setGraphicsPos(x, y);
+
 
         // Присвоение координат x и y кнопке grid[i][j] для правильного отображения (для JavaFX)
         this.setLayoutX(x_pos);
@@ -52,11 +52,29 @@ public class Field extends Button {
         return this.y_pos;
     }
 
-    public void conquer(Player player){
+    public void conquer(Player player, int villagers_amount_decrease){
         this.is_occupied = true;
-        this.belongs_to = player;
+        this.owner = player;
         player.give_field(this.x_i, this.y_j);
         this.setText("");
+        // Если данное поле - поле воды или поле риса - увеличиваем количество соответствующих полей данного игрока
+        if (this.getType() == 1){
+            player.rice_fields_amount++;
+        } else if (this.getType() == 2){
+            player.water_fields_amount++;
+        }
+        // Увеличиваем общее количество полей во владении данного игрока
+        player.overall_fields_amount++;
+        // Уменьшаем количество риса игрока
+        player.rice_amount -= this.required_villagers_amount;
+        // Уменьшаем количество жителей на случайную величину, сгенерированную в прошлой функции
+        player.villagers_amount -= villagers_amount_decrease;
+        // Меняет цвет если поле принадлежит ИИ
+        if (player == ConquerGame.AIplayer) {
+            this.setStyle("-fx-background-color:#b786f7;");
+        } else if (player == ConquerGame.player) {
+            this.setStyle("-fx-background-color:#8bfcc9;");
+        }
     }
 
     public boolean isUnoccupied(){
@@ -75,5 +93,11 @@ public class Field extends Button {
     }
 
     public void setTexture(){
+    }
+    public void giveRice(){
+    }
+    public void waterRiceField(){
+    }
+    public void spawnVillager() {
     }
 }

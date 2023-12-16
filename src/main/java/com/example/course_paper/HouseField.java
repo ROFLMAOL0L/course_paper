@@ -4,7 +4,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 public class HouseField extends Field{
-    final private Player owner;
     public HouseField(int type_value, int i, int j, int x, int y, Player owner) {
         super(type_value, i, j, x, y);
         this.owner = owner;
@@ -22,5 +21,9 @@ public class HouseField extends Field{
         house_view.setY(this.getY());
         house_view.autosize();
         this.setGraphic(house_view);
+    }
+    @Override
+    public void spawnVillager(){
+        this.owner.villagers_amount++;
     }
 }
