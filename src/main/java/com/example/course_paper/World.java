@@ -1,5 +1,8 @@
 package com.example.course_paper;
 
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.stage.DirectoryChooser;
 
 import java.io.File;
@@ -10,7 +13,7 @@ import java.util.*;
 
 public class World {
     // Создание двумерного массива для хранения объектов класса Field
-    private Field[][] grid;
+    private final Field[][] grid;
     final private int rows_amount, columns_amount;
     // Значение порядкового номера серединного столбца и ряда
     private final int average_column_amount;
@@ -21,6 +24,7 @@ public class World {
     // Создание объект класса Random для генерации псевдо-случайных чисел
     Random random_integer_generator = new Random();
     private final int[][] start_fields_i_j;
+
     // Массив из булевых значений, каждое определяет возможность ИИ совершить действие
     // {"Набрать воды", "Полить рис", "Построить дом", "Захватить поле"}
     private final boolean[] possible_AI_moves = {false, false, false, false};
@@ -41,8 +45,14 @@ public class World {
             try {
                 this.loadGame(this.parseSaveFile(load_file_path));
             } catch (FileNotFoundException e){
+                ConquerGame.game_message_indicator.setText("Невозможно открыть. Файл не найден.");
+                ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
                 e.printStackTrace();
-            }
+            } catch (IndexOutOfBoundsException e){
+                ConquerGame.game_message_indicator.setText("Невозможно открыть. Закройте приложение и удалите этот файл сохранения.");
+                ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
+                //e.printStackTrace();
+                }
         } else {
             this.generateGrid();
         }
@@ -111,6 +121,9 @@ public class World {
         } else if (type == 2){
             grid[x_i][y_j] = new WaterField(type, x_i, y_j, x, y, required_villages_amount);
         } else {
+            // Таким образом мы обрабатываем поля во время загрузки сохранения игры, заменяя поля с типом "дом" на
+            // пустые поля. Иначе сделать это невозможно, так как после создания подгружаемого массива grid[][] лоигка
+            // программы требует его полное заполнение.
             grid[x_i][y_j] = new EmptyField(type, x_i, y_j, x, y, required_villages_amount);
         }
     }
@@ -290,17 +303,37 @@ public class World {
         }
     }
     private void endTurn(){
-        if (ConquerGame.player.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2)) {
+        if (ConquerGame.player.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2 - 1)) {
             ConquerGame.group.getChildren().clear();
             ConquerGame.game_message_indicator.setText("Вы выиграли!!!");
             ConquerGame.game_message_indicator.autosize();
             ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
+            this.showEndgameGraphs(ConquerGame.player.story_of_rice, ConquerGame.AIplayer.story_of_rice,
+                    "Номер хода", "Количество риса", "Мониторинг количества риса", 0);
+
+            this.showEndgameGraphs(ConquerGame.player.story_of_villagers, ConquerGame.AIplayer.story_of_villagers,
+                    "Номер хода", "Количество крестьян", "Мониторинг количества крестьян",
+                    this.columns_amount * cell_height / 3);
+
+            this.showEndgameGraphs(ConquerGame.player.story_of_fields, ConquerGame.AIplayer.story_of_fields,
+                    "Номер хода", "Количество полей", "Мониторинг количества полей",
+                    this.columns_amount * cell_height / 3 * 2);
             return;
-        } else if (ConquerGame.AIplayer.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2)){
+        } else if (ConquerGame.AIplayer.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2 - 1)){
             ConquerGame.group.getChildren().clear();
             ConquerGame.game_message_indicator.setText("Вы проиграли...");
             ConquerGame.game_message_indicator.autosize();
             ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
+            this.showEndgameGraphs(ConquerGame.player.story_of_rice, ConquerGame.AIplayer.story_of_rice,
+                    "Номер хода", "Количество риса", "Мониторинг количества риса", 0);
+
+            this.showEndgameGraphs(ConquerGame.player.story_of_villagers, ConquerGame.AIplayer.story_of_villagers,
+                    "Номер хода", "Количество крестьян", "Мониторинг количества крестьян",
+                    this.columns_amount * cell_height / 3);
+
+            this.showEndgameGraphs(ConquerGame.player.story_of_fields, ConquerGame.AIplayer.story_of_fields,
+                    "Номер хода", "Количество полей", "Мониторинг количества полей",
+                    this.columns_amount * cell_height / 3 * 2);
             return;
         }
         for (int i = 0; i < this.rows_amount; i++){
@@ -343,24 +376,33 @@ public class World {
         // Обнуляем массив с возможными ходами
         Arrays.fill(this.possible_AI_moves, false);
 
+        // Проходим по всем полям
         List<Field> fields_possible_to_conquer = new ArrayList<>();
         Field empty_owned_field = this.grid[0][0]; // Иначе java считает, что переменная может быть не инициализирована
-        for (int i = 0; i < this.rows_amount; i++){
-            for (int j = 0; j < this.columns_amount; j++){
+        for (int i = 0; i < this.rows_amount; i++) {
+            for (int j = 0; j < this.columns_amount; j++) {
                 // Объявляем временные локальные переменные
                 Field temp_field = this.getGridMember(i, j);
                 if (temp_field.isUnoccupied()){
+                    // Проверка можно ли завоевать поле
                     if (this.is_next(i, j, ConquerGame.AIplayer) && this.canConquer(ConquerGame.AIplayer, temp_field)){
                         this.possible_AI_moves[3] = true;
+                        // Добавляем в список всех полей, которые может завоевать ИИ в данный ход
                         fields_possible_to_conquer.add(temp_field);
                     }
                 } else {
                     if (temp_field.owner == ConquerGame.AIplayer) {
+                        // Проверка можно ли полить рис
                         if (temp_field.getType() == 1 && this.canWaterRice(ConquerGame.AIplayer, temp_field)){
                             this.possible_AI_moves[1] = true;
-                        } else if (temp_field.getType() == 2){
+                        }
+                        // Проверка можно ли набрать воды (вода есть всегда, набрать ее можно всегда, поэтому
+                        // простая проверка на тип переменной
+                        else if (temp_field.getType() == 2){
                             this.possible_AI_moves[0] = true;
-                        } else if (temp_field.getType() == 0 && this.canBuildHouse(ConquerGame.AIplayer, temp_field)){
+                        }
+                        // Проверка можно ли построить дом
+                        else if (temp_field.getType() == 0 && this.canBuildHouse(ConquerGame.AIplayer, temp_field)){
                             this.possible_AI_moves[2] = true;
                             empty_owned_field = temp_field;
                         }
@@ -368,9 +410,9 @@ public class World {
                 }
             }
         }
-        if (this.possible_AI_moves[3]){
-            // Локальные переменные для нахождения наиболее приоритетного поля для захвата
 
+        // Решение какой ход будет выполнен (см отчет "Блок схема выбора хода ИИ)
+        if (this.possible_AI_moves[3]){
             Field chosen_field = fields_possible_to_conquer.get(0);
             int temp_min = 100;
             for (int k = 0; k < fields_possible_to_conquer.size(); k++){
@@ -498,7 +540,7 @@ public class World {
         return save_log_string.toString();
     }
 
-    private void loadGame(String save_log) {
+    private void loadGame(String save_log) throws IndexOutOfBoundsException{
         // Разделение данных сохранения на блоки
         String[] save_log_blocks = save_log.split("block_divider\n");
 
@@ -507,6 +549,12 @@ public class World {
         String[][] fields_types = new String[field_types_row.length][field_types_row.length];
         for (int i = 0; i < field_types_row.length; i++){
             fields_types[i] = field_types_row[i].split(" ");
+            if (fields_types[i].length != this.columns_amount){
+                throw new IndexOutOfBoundsException();
+            }
+        }
+        if (fields_types.length != this.rows_amount){
+            throw new IndexOutOfBoundsException();
         }
 
         // Заполняем массив grid[][] объектами класса Field (аналогично методу generateGrid)
@@ -576,5 +624,46 @@ public class World {
         ConquerGame.AIplayer.villagers_amount = villagers_amount;
 
         this.refreshGrid();
+    }
+
+    private void showEndgameGraphs(List<Integer> player_story_of_variable, List<Integer> AI_story_of_variable,
+                                   String xAxisName, String yAxisName, String graph_name, int y_pos){
+        NumberAxis xAxis = new NumberAxis();
+        NumberAxis yAxis = new NumberAxis();
+
+        // Присваивание названия оси абсцисс
+        xAxis.setLabel(xAxisName);
+        // Присваивание названия оси ординат
+        yAxis.setLabel(yAxisName);
+
+        // Создание объекта графика (чарта)
+        LineChart<Number,Number> lineChart = new LineChart<Number,Number>(xAxis,yAxis);
+
+        // Присваивание названия оси ординат
+        lineChart.setTitle(graph_name);
+        // Создание отдельного графика игрока
+        XYChart.Series series = new XYChart.Series();
+        // присвоение имени отдельному графику игрока
+        series.setName("Игрок");
+        // Заполнение графика данными
+        for (int i = 0; i < player_story_of_variable.size(); i++){
+            series.getData().add(new XYChart.Data(i, player_story_of_variable.get(i)));
+
+        }
+
+        // Создание отдельного графика ИИ
+        XYChart.Series series1 = new XYChart.Series();
+        // присвоение имени отдельному графику ИИ
+        series1.setName("ИИ");
+        // Заполнение графика данными
+        for (int i = 0; i < AI_story_of_variable.size(); i++){
+            series1.getData().add(new XYChart.Data(i, AI_story_of_variable.get(i)));
+
+        }
+        lineChart.getData().add(series);
+        lineChart.getData().add(series1);
+        lineChart.setPrefSize(this.rows_amount * cell_width, this.columns_amount * cell_height / 3.0);
+        lineChart.setLayoutY(10 + y_pos);
+        ConquerGame.group.getChildren().add(lineChart);
     }
 }
