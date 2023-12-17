@@ -17,6 +17,12 @@ public class Player {
 
     public List<Integer> x_fields = new ArrayList<Integer>();
     public List<Integer> y_fields = new ArrayList<Integer>();
+    // Используется для хранения данных о том, как менялось количество риса на протяжении игры
+    public List<Integer> story_of_rice = new ArrayList<Integer>();
+    public List<Integer> story_of_villagers = new ArrayList<Integer>();
+    public List<Integer> story_of_fields = new ArrayList<Integer>();
+
+
     public Player(){
         rice_amount = 0;
         water_amount = 0;
@@ -49,5 +55,11 @@ public class Player {
         } else {
             this.water_amount += this.villagers_amount;
         }
+    }
+
+    public void refreshStory(){
+        this.story_of_rice.add(this.rice_amount);
+        this.story_of_villagers.add(this.villagers_amount);
+        this.story_of_fields.add(this.overall_fields_amount);
     }
 }

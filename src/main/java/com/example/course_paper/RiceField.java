@@ -48,7 +48,9 @@ public class RiceField extends Field{
     }
     @Override
     public void waterRiceField(){
-        this.is_just_watered = true;
+        if (this.wet_level == 0) {
+            this.is_just_watered = true;
+        }
         this.wet_level = 2;
     }
 

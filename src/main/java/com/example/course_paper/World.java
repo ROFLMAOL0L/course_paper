@@ -1,9 +1,12 @@
 package com.example.course_paper;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import javafx.stage.DirectoryChooser;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
 
 public class World {
     // Создание двумерного массива для хранения объектов класса Field
@@ -22,7 +25,8 @@ public class World {
     // {"Набрать воды", "Полить рис", "Построить дом", "Захватить поле"}
     private final boolean[] possible_AI_moves = {false, false, false, false};
 
-    public World(int rows_amount, int columns_amount){
+
+    public World(int rows_amount, int columns_amount, String load_file_path){
         // Создание двумерного массива для хранения всех объектов класса Field
         this.grid = new Field[rows_amount][columns_amount];
         this.rows_amount = rows_amount;
@@ -33,7 +37,15 @@ public class World {
                                         {rows_amount - 1, columns_amount - 1},
                                         {rows_amount - 1, columns_amount - 2},
                                         {rows_amount - 2, columns_amount - 1}};
-        this.generateGrid();
+        if (load_file_path != null){
+            try {
+                this.loadGame(this.parseSaveFile(load_file_path));
+            } catch (FileNotFoundException e){
+                e.printStackTrace();
+            }
+        } else {
+            this.generateGrid();
+        }
     }
 
 
@@ -84,9 +96,9 @@ public class World {
 
         // Добавляем i и j по мере приближения к центру, чтобы количество требуемых крестьян неубывало
         if (i + j < this.average_rows_amount + this.average_column_amount){
-            temp_integer += i + j;
+            temp_integer += (int) Math.pow((i + j), 2);
         } else {
-            temp_integer += this.rows_amount - i + this.columns_amount - j - 2;
+            temp_integer += (int) Math.pow((this.rows_amount - i + this.columns_amount - j - 2), 2);
         }
         return temp_integer;
     }
@@ -98,6 +110,8 @@ public class World {
             grid[x_i][y_j] = new RiceField(type, x_i, y_j, x, y, required_villages_amount);
         } else if (type == 2){
             grid[x_i][y_j] = new WaterField(type, x_i, y_j, x, y, required_villages_amount);
+        } else {
+            grid[x_i][y_j] = new EmptyField(type, x_i, y_j, x, y, required_villages_amount);
         }
     }
 
@@ -160,7 +174,7 @@ public class World {
             this.endTurn();
         }
         // Обработка случая, когда игрок нажал на свое поле риса (полив всего риса)
-        else if (canWaterRice(ConquerGame.player, field_sample)){
+        else if (canWaterRice(ConquerGame.player, field_sample) && !field_sample.isUnoccupied()){
             // Полить весь рис
             this.waterRice(ConquerGame.player);
             this.endTurn();
@@ -175,7 +189,6 @@ public class World {
             ConquerGame.player.collectWater();
             this.endTurn();
         }
-        refreshGrid();
     }
 
     // Возвращает true если данный игрок может захватить данное поле
@@ -278,15 +291,17 @@ public class World {
     }
     private void endTurn(){
         if (ConquerGame.player.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2)) {
-            //ConquerGame.group.getChildren().clear();
+            ConquerGame.group.getChildren().clear();
             ConquerGame.game_message_indicator.setText("Вы выиграли!!!");
             ConquerGame.game_message_indicator.autosize();
             ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
+            return;
         } else if (ConquerGame.AIplayer.overall_fields_amount >= (this.rows_amount * this.columns_amount / 2)){
-            //ConquerGame.group.getChildren().clear();
+            ConquerGame.group.getChildren().clear();
             ConquerGame.game_message_indicator.setText("Вы проиграли...");
             ConquerGame.game_message_indicator.autosize();
             ConquerGame.group.getChildren().add(ConquerGame.game_message_indicator);
+            return;
         }
         for (int i = 0; i < this.rows_amount; i++){
             for (int j = 0; j < this.columns_amount; j++){
@@ -302,10 +317,10 @@ public class World {
         }
         this.handleAITurn();
 
-        ConquerGame.rice_amount_indicator.setText("Рис: " + ConquerGame.player.rice_amount);
-        ConquerGame.villagers_amount_indicator.setText("Крестьяне:  " + ConquerGame.player.villagers_amount);
-        ConquerGame.water_amount_indicator.setText("Вода: " + ConquerGame.player.water_amount);
-        ConquerGame.game_message_indicator.setText("Ваш ход!");
+        refreshGrid();
+        refreshUI();
+        refreshPlayersStory();
+
     }
     public void waterRice(Player player){   // Небольшое уточнение, слово water здесь идет как глагол, по всем правилам английского
         int temp_V = player.villagers_amount;
@@ -378,5 +393,188 @@ public class World {
             // ХОД 0: набрать воды
             ConquerGame.AIplayer.collectWater();
         }
+    }
+    private void refreshUI(){
+        ConquerGame.rice_amount_indicator.setText("Рис: " + ConquerGame.player.rice_amount);
+        ConquerGame.villagers_amount_indicator.setText("Крестьяне:  " + ConquerGame.player.villagers_amount);
+        ConquerGame.water_amount_indicator.setText("Вода: " + ConquerGame.player.water_amount);
+        ConquerGame.game_message_indicator.setText("Ваш ход!");
+
+    }
+
+    private void refreshPlayersStory(){
+        ConquerGame.player.refreshStory();
+        ConquerGame.AIplayer.refreshStory();
+    }
+
+    public void saveGame(){
+        // Запускаем выбор директории с помощью javafx.stage.DirectoryChooser
+        DirectoryChooser directory_chooser = new DirectoryChooser();
+        directory_chooser.setTitle("Выберите папку для сохранения игры");
+        // Сохраняем выбранную директорию
+        File directory = directory_chooser.showDialog(ConquerGame.stage_reference);
+        // Считываем все файлы директории для нумерации нового сохранения
+        File[] files_list = directory.listFiles();
+        assert files_list != null;
+        int temp_int = 1;
+        for (File file : files_list) {
+            String file_name = file.getName();
+            if (file_name.startsWith("Conquer Game сохранение ")){
+                temp_int++;
+            }
+        }
+
+        // Создаем путь к новому файлу
+        String new_file_path = directory.getAbsolutePath() + "\\Conquer Game сохранение " + Integer.toString(temp_int) + ".txt";
+        System.out.println(new_file_path);
+        //File save_file = new File(new_file_path);
+        // Создаем .txt файл и записываем в него все данные для сохранения
+        try {
+            FileWriter writer = new FileWriter(new_file_path);
+            writer.write(this.createSaveLog());
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private String createSaveLog(){
+        // Создаем переменную типа StringBuilder для сбора данных об игровом поле в одну строку
+        StringBuilder save_log = new StringBuilder();
+
+        // Сбор данных о типах полей
+        for (int i = 0; i < this.rows_amount; i++){
+            for (int j = 0; j < this.columns_amount; j++){
+                save_log.append(this.grid[i][j].getType()).append(" ");
+            }
+            save_log.append("\n");
+        }
+        save_log.deleteCharAt(save_log.length() - 1);
+        // Конец блока сбора данных о типах полей
+        save_log.append("block_divider\n");
+
+        // Сбор данных о полях во владениях игрока
+        for (int i = 0; i < ConquerGame.player.x_fields.size(); i++){
+            save_log.append(ConquerGame.player.x_fields.get(i)).append(" ");
+        }
+        save_log.append("\n");
+        for (int i = 0; i < ConquerGame.player.y_fields.size(); i++){
+            save_log.append(ConquerGame.player.y_fields.get(i)).append(" ");
+        }
+
+        save_log.append("block_divider\n");
+
+        // Сбор данных о полях во владениях ИИ
+        for (int i = 0; i < ConquerGame.AIplayer.x_fields.size(); i++){
+            save_log.append(ConquerGame.AIplayer.x_fields.get(i)).append(" ");
+        }
+        save_log.append("\n");
+        for (int i = 0; i < ConquerGame.AIplayer.y_fields.size(); i++){
+            save_log.append(ConquerGame.AIplayer.y_fields.get(i)).append(" ");
+        }
+
+        save_log.append("block_divider\n");
+
+        // Сбор данных о ресурсах игрока
+        save_log.append(ConquerGame.player.rice_amount).append(" ");
+        save_log.append(ConquerGame.player.water_amount).append(" ");
+        save_log.append(ConquerGame.player.villagers_amount).append(" ");
+        save_log.append("block_divider\n");
+        // Сбор данных о ресурсах игрока
+        save_log.append(ConquerGame.AIplayer.rice_amount).append(" ");
+        save_log.append(ConquerGame.AIplayer.water_amount).append(" ");
+        save_log.append(ConquerGame.AIplayer.villagers_amount).append(" ");
+        return save_log.toString();
+    }
+
+    private String parseSaveFile(String load_file_path) throws FileNotFoundException {
+        // Считываем файл с помощью класса Scanner для которого нужна обработка ошибки "Файл не найден"
+        File save_file = new File(load_file_path);
+        Scanner file_scanner = new Scanner(save_file);
+        StringBuilder save_log_string = new StringBuilder();
+        while (file_scanner.hasNextLine()){
+            save_log_string.append(file_scanner.nextLine()).append("\n");
+        }
+        file_scanner.close();
+        return save_log_string.toString();
+    }
+
+    private void loadGame(String save_log) {
+        // Разделение данных сохранения на блоки
+        String[] save_log_blocks = save_log.split("block_divider\n");
+
+        // Загрузка типов полей каждого поля
+        String[] field_types_row = save_log_blocks[0].split("\n");
+        String[][] fields_types = new String[field_types_row.length][field_types_row.length];
+        for (int i = 0; i < field_types_row.length; i++){
+            fields_types[i] = field_types_row[i].split(" ");
+        }
+
+        // Заполняем массив grid[][] объектами класса Field (аналогично методу generateGrid)
+        for (int i = 0; i < fields_types.length; i++) {
+            for (int j = 0; j < fields_types.length; j++) {
+                // Заполнение полем
+                this.addField(Integer.parseInt(fields_types[i][j]), i, j,
+                        i * this.cell_width, j * cell_height, calculateRequired_villagers_amount(i, j));
+
+                // Присвоение размера полю grid[i][j]
+                grid[i][j].setPrefSize(this.cell_width, this.cell_height);
+
+                if (this.is_next(i, j, ConquerGame.player)){
+                    grid[i][j].setDisable(false);
+                } else {
+                    grid[i][j].setDisable(true);
+                }
+
+                // Указываем на функцию, которая будет выполняться при нажатии кнопки.
+                Field temp_field = grid[i][j];   // Создание переменной для передачи в lambda функцию
+                grid[i][j].setOnAction(event -> {
+                    handleFieldClick(temp_field);
+                });
+            }
+        }
+
+        // Загрузка всех данных о полях во владении игрока
+        String[] x_fields = save_log_blocks[1].split("\n")[0].split(" ");
+        String[] y_fields = save_log_blocks[1].split("\n")[1].split(" ");
+        for (int i = 0; i < x_fields.length; i++ ){
+            if (this.grid[Integer.parseInt(x_fields[i])][Integer.parseInt(y_fields[i])].getType() == 3){
+                this.buildHouse(Integer.parseInt(x_fields[i]), Integer.parseInt(y_fields[i]), ConquerGame.player);
+            } else {
+                this.grid[Integer.parseInt(x_fields[i])][Integer.parseInt(y_fields[i])].conquer(ConquerGame.player, 0);
+            }
+
+        }
+
+        x_fields = save_log_blocks[2].split("\n")[0].split(" ");
+        y_fields = save_log_blocks[2].split("\n")[1].split(" ");
+        for (int i = 0; i < x_fields.length; i++ ){
+            if (this.grid[Integer.parseInt(x_fields[i])][Integer.parseInt(y_fields[i])].getType() == 3){
+                this.buildHouse(Integer.parseInt(x_fields[i]), Integer.parseInt(y_fields[i]), ConquerGame.AIplayer);
+            } else {
+                this.grid[Integer.parseInt(x_fields[i])][Integer.parseInt(y_fields[i])].conquer(ConquerGame.AIplayer, 0);
+            }
+        }
+
+
+        // Загрузка данных о ресурсах игрока
+        int rice_amount = 0;
+        int water_amount = 0;
+        int villagers_amount = 0;
+        rice_amount = Integer.parseInt(save_log_blocks[3].split(" ")[0]);
+        water_amount = Integer.parseInt(save_log_blocks[3].split(" ")[1]);
+        villagers_amount = Integer.parseInt(save_log_blocks[3].split(" ")[2]);
+        ConquerGame.player.rice_amount = rice_amount;
+        ConquerGame.player.water_amount = water_amount;
+        ConquerGame.player.villagers_amount = villagers_amount;
+
+        // Загрузка данных о ресурсах ИИ
+        rice_amount = Integer.parseInt(save_log_blocks[4].split(" ")[0]);
+        water_amount = Integer.parseInt(save_log_blocks[4].split(" ")[1]);
+        villagers_amount = Integer.parseInt(save_log_blocks[4].split(" ")[2]);
+        ConquerGame.AIplayer.rice_amount = rice_amount;
+        ConquerGame.AIplayer.water_amount = water_amount;
+        ConquerGame.AIplayer.villagers_amount = villagers_amount;
+
+        this.refreshGrid();
     }
 }

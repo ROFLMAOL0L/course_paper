@@ -63,12 +63,14 @@ public class Field extends Button {
         } else if (this.getType() == 2){
             player.water_fields_amount++;
         }
-        // Увеличиваем общее количество полей во владении данного игрока
-        player.overall_fields_amount++;
-        // Уменьшаем количество риса игрока
-        player.rice_amount -= this.required_villagers_amount;
-        // Уменьшаем количество жителей на случайную величину, сгенерированную в прошлой функции
-        player.villagers_amount -= villagers_amount_decrease;
+        if (villagers_amount_decrease != 0) {
+            // Увеличиваем общее количество полей во владении данного игрока
+            player.overall_fields_amount++;
+            // Уменьшаем количество риса игрока
+            player.rice_amount -= this.required_villagers_amount;
+            // Уменьшаем количество жителей на случайную величину, сгенерированную в прошлой функции
+            player.villagers_amount -= villagers_amount_decrease;
+        }
         // Меняет цвет если поле принадлежит ИИ
         if (player == ConquerGame.AIplayer) {
             this.setStyle("-fx-background-color:#b786f7;");
